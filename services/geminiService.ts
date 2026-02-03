@@ -6,46 +6,36 @@ export const getAIExplanation = async (
   inputs: Record<string, any>,
   outputs: Record<string, any>
 ): Promise<string> => {
-  if (!process.env.API_KEY) {
-    return "AI insights are unavailable. API Key is missing from the environment.";
-  }
-
+  // Fix: Initialize GoogleGenAI inside the function to use the current process.env.API_KEY
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  const prompt = `
-    Context: A professional user is using the "${calculatorName}" toolkit.
-    Inputs: ${JSON.stringify(inputs, null, 2)}
-    Calculated Results: ${JSON.stringify(outputs, null, 2)}
+  // Use direct process.env check to verify key presence as per guidelines context
+  if (!process.env.API_KEY) {
+    return "AI insights are unavailable. Please configure the API Key in the environment.";
+  }
 
-    Goal: Provide a high-level, strategic interpretation of these findings.
-    - Explain the "Why" behind the "What".
-    - If financial, discuss risks/opportunities. 
-    - If health, discuss wellness implications.
-    - If math/engineering, explain the physical/theoretical significance.
-    - Formatting: Maximum 120 words. Use clear paragraphs. No markdown headers.
-    - Tone: Sophisticated, architectural, precise.
+  const prompt = `
+    Context: A user is using the "${calculatorName}" on a web calculator app.
+    Inputs Provided: ${JSON.stringify(inputs, null, 2)}
+    Results Calculated: ${JSON.stringify(outputs, null, 2)}
+
+    Task: Provide a concise, professional, and helpful explanation of these results. 
+    1. Summarize what the results mean for the user.
+    2. Provide 1-2 actionable tips or insights based on these specific numbers.
+    3. Keep it under 150 words.
+    4. Use markdown for bolding key figures.
   `;
 
   try {
+    // Correct usage of ai.models.generateContent with model and string contents
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
-      config: {
-        temperature: 0.7,
-        topP: 0.9,
-        maxOutputTokens: 250,
-      }
     });
-
-    const text = response.text;
-    return text || "Computation successful, but AI interpretation failed to converge. Please verify inputs.";
-  } catch (error: any) {
-    console.error("Gemini Critical Failure:", error);
-    
-    // Friendly error categorization
-    if (error?.message?.includes('429')) return "High traffic. AI insights are currently throttled.";
-    if (error?.message?.includes('400')) return "Input parameters are outside AI processing bounds.";
-    
-    return "The AI engine encountered a synchronization issue. Local math remains accurate.";
+    // Extracting text output directly from property text
+    return response.text || "No explanation generated.";
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return "Unable to fetch AI insights at this moment. Please try again later.";
   }
 };
