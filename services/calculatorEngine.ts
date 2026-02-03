@@ -60,8 +60,7 @@ import { SCENARIO_COMPARISON } from '../advanced_calculators/comparison/calc';
 import { MONTE_CARLO_SIM } from '../advanced_calculators/simulations/monte_carlo';
 import { API_BRIDGE } from '../advanced_calculators/api/connector';
 
-export const CALCULATORS: CalculatorDef[] = [
-  // Finance Suite
+const RAW_CALCULATORS: CalculatorDef[] = [
   ...LEGACY_FINANCE,
   LOAN_EMI_CALC,
   LUMPSUM_CALC,
@@ -70,8 +69,6 @@ export const CALCULATORS: CalculatorDef[] = [
   PAYROLL_CALC,
   CRYPTO_PROFIT_CALC,
   RETIREMENT_CALC,
-
-  // Health Suite
   ...LEGACY_HEALTH,
   BMI_CALC,
   BODY_FAT_CALC,
@@ -79,31 +76,23 @@ export const CALCULATORS: CalculatorDef[] = [
   DOSAGE_CALC,
   PREGNANCY_CALC,
   SLEEP_CALC,
-
-  // Engineering Suite
   ...LEGACY_ENGINEERING,
   PROJECTILE_MOTION_CALC,
   MOLARITY_CALC,
   RC_FILTER_CALC,
   CONCRETE_CALC,
   STRESS_STRAIN_CALC,
-
-  // Utility Suite
   ...LEGACY_UTILITY,
   AGE_CALCULATOR,
   TIMEZONE_CALCULATOR,
   UNIVERSAL_CONVERTER,
   CURRENCY_CONVERTER,
   PERCENTAGE_PRO,
-
-  // Advanced Suite
   FORMULA_BUILDER,
   SYMBOLIC_MATH,
   SCENARIO_COMPARISON,
   MONTE_CARLO_SIM,
   API_BRIDGE,
-  
-  // Core Math Suite
   BASIC_ARITHMETIC,
   SCIENTIFIC_ADVANCED,
   TRIG_CALCULATOR,
@@ -118,6 +107,26 @@ export const CALCULATORS: CalculatorDef[] = [
   NUMBER_THEORY_CALC,
   ...LEGACY_MATH
 ];
+
+// Safety Wrapper: Ensures calculations don't throw errors that break the app
+export const CALCULATORS = RAW_CALCULATORS.map(calc => ({
+  ...calc,
+  calculate: (inputs: Record<string, any>) => {
+    try {
+      const result = calc.calculate(inputs);
+      // Deep sanitization of results
+      Object.keys(result).forEach(key => {
+        if (typeof result[key] === 'number' && !isFinite(result[key])) {
+          result[key] = 'Error: Range exceeded';
+        }
+      });
+      return result;
+    } catch (e) {
+      console.error(`Calculation failed for ${calc.id}:`, e);
+      return { error: true, message: 'Computation failed' };
+    }
+  }
+}));
 
 export const getCalculator = (id: string) => CALCULATORS.find(c => c.id === id);
 
